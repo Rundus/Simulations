@@ -1,0 +1,15 @@
+efield= getDataSet('https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf?EField_lf')
+parts=  getDataSet('https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf?elec_lf_x')
+print parts
+
+zeros= dataset(['0 V/m'])
+for i in xrange(len(efield)):
+    reset()
+    plot( 0, efield[i] )
+    # Red is the left point
+    # Green the right point
+    plot( 1, parts[i,[0]], zeros, color=Color.RED, symbolSize=5 ) #, overplotOf=dom.plots[0] )
+    plot( 2, parts[i,[1]], zeros, color=Color.BLUE, symbolSize=5 ) #, overplotOf=dom.plots[0] )
+    stop
+    
+    sleep(1000)
