@@ -1,15 +1,37 @@
+import sys
+from java.io import File
+
 efield= getDataSet('https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf?EField_lf')
 parts=  getDataSet('https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf?elec_lf_x')
 print parts
 
+addToSearchPath(sys.path,'https://repo1.maven.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.jar',monitor.getSubtaskMonitor('jar1'))
+addToSearchPath(sys.path,'https://repo1.maven.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.jar',monitor.getSubtaskMonitor('jar2'))
+from org.jcodec.api.awt import AWTSequenceEncoder
+outf= getParam( 'outf', File('/tmp/apmovie.mp4'), 'Output File' )
+enc = AWTSequenceEncoder.createSequenceEncoder(outf,24)
+
+reset()
+setLayoutOverplot(3)
+setCanvasSize(730,650)
+
+monitor.taskSize=len(efield)
+monitor.started()
+
 zeros= dataset(['0 V/m'])
-for i in xrange(len(efield)):
-    reset()
-    plot( 0, efield[i] )
+for i in xrange(200): # len(efield)):
+    monitor.taskProgress = monitor.taskProgress + 1
+    if monitor.cancelled: stop
+    plot( 0, efield[i],xrange='-800895.4477238648 to 2.10010E7 m', yrange='-1.099999361031223E-4 to 1.1E-4 V/m' )
     # Red is the left point
     # Green the right point
-    plot( 1, parts[i,[0]], zeros, color=Color.RED, symbolSize=5 ) #, overplotOf=dom.plots[0] )
-    plot( 2, parts[i,[1]], zeros, color=Color.BLUE, symbolSize=5 ) #, overplotOf=dom.plots[0] )
-    stop
+    plot( 1, parts[i,[0]], zeros, color=Color.RED, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    plot( 2, parts[i,[1]], zeros, color=Color.BLUE, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    img= writeToBufferedImage()
+    enc.encodeImage(img)
     
-    sleep(1000)
+for i in xrange(240):
+     enc.encodeImage(img)
+     
+enc.finish()
+monitor.finished()
