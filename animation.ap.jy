@@ -26,7 +26,7 @@ for i in xrange(200): # len(efield)):
     # Red is the left point
     # Green the right point
     plot( 1, parts[i,[0]], zeros, color=Color.RED, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
-    plot( 2, parts[i,[1]], zeros, color=Color.BLUE, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    plot( 2, parts[i,[1]], zeros, color=Color.GREEN, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
     img= writeToBufferedImage()
     enc.encodeImage(img)
     
