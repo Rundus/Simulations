@@ -1,3 +1,4 @@
+from java.lang import System
 import sys
 from java.io import File
 
@@ -15,12 +16,20 @@ reset()
 setLayoutOverplot(3)
 setCanvasSize(730,650)
 
+dom.plots[0].visible=False
+dom.plots[0].xaxis.visible=False
+dom.plots[0].yaxis.visible=False
+
 monitor.taskSize=len(efield)
 monitor.started()
+
+t0= System.currentTimeMillis()
 
 zeros= dataset(['0 V/m'])
 for i in xrange(200): # len(efield)):
     monitor.taskProgress = monitor.taskProgress + 1
+    telapsed= '%.1f' % ( ( System.currentTimeMillis()-t0 )/ 1000. )
+    monitor.progressMessage= '#'+str(i)+' '+ telapsed 
     if monitor.cancelled: stop
     plot( 0, efield[i],xrange='-800895.4477238648 to 2.10010E7 m', yrange='-1.099999361031223E-4 to 1.1E-4 V/m' )
     # Red is the left point
