@@ -5,9 +5,9 @@ from java.io import File
 
 ff= 'https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf'
 
-frame= getParam('frame','stationary','frame of reference', ['stationary','moving'] )
+frame= getParam('frame','lab','frame of reference', ['lab','wave'] )
 
-if ( frame=='stationary' ):
+if ( frame=='lab' ):
     efield= getDataSet(ff+'?EField_lf')
     partsx=  getDataSet(ff+'?elec_lf_x')
     partsy=  getDataSet(ff+'?elec_lf_y')
