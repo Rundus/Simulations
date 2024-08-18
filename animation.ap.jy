@@ -1,16 +1,31 @@
+from org.das2.util import ColorUtil
 from java.lang import System
 import sys
 from java.io import File
 
-efield= getDataSet('https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf?EField_lf')
-parts=  getDataSet('https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf?elec_lf_x')
-print parts
+ff= 'https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf'
+
+frame= getParam('frame','stationary','frame of reference', ['stationary','moving'] )
+
+if ( frame=='stationary' ):
+    efield= getDataSet(ff+'?EField_lf')
+    partsx=  getDataSet(ff+'?elec_lf_x')
+    partsy=  getDataSet(ff+'?elec_lf_y')
+else:
+    efield= getDataSet(ff+'?EField_wf')
+    partsx=  getDataSet(ff+'?elec_wf_x')
+    partsy=  getDataSet(ff+'?elec_wf_y')
+    
 
 addToSearchPath(sys.path,'https://repo1.maven.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.jar',monitor.getSubtaskMonitor('jar1'))
 addToSearchPath(sys.path,'https://repo1.maven.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.jar',monitor.getSubtaskMonitor('jar2'))
 from org.jcodec.api.awt import AWTSequenceEncoder
 outf= getParam( 'outf', File('/tmp/apmovie.mp4'), 'Output File' )
 enc = AWTSequenceEncoder.createSequenceEncoder(outf,24)
+
+npause=240
+greenColor= ColorUtil.FOREST_GREEN
+redColor= ColorUtil.RED
 
 reset()
 setLayoutOverplot(3)
@@ -20,27 +35,32 @@ dom.plots[0].visible=False
 dom.plots[0].xaxis.visible=False
 dom.plots[0].yaxis.visible=False
 
-monitor.taskSize=len(efield)
+monitor.taskSize=len(efield)+npause
 monitor.started()
 
 t0= System.currentTimeMillis()
 
 zeros= dataset(['0 V/m'])
-for i in xrange(200): # len(efield)):
+for i in xrange(len(efield)):
     monitor.taskProgress = monitor.taskProgress + 1
     telapsed= '%.1f' % ( ( System.currentTimeMillis()-t0 )/ 1000. )
-    monitor.progressMessage= '#'+str(i)+' '+ telapsed 
+    monitor.progressMessage= '#'+str(i)+' '+ telapsed +'s'
     if monitor.cancelled: stop
-    plot( 0, efield[i],xrange='-800895.4477238648 to 2.10010E7 m', yrange='-1.099999361031223E-4 to 1.1E-4 V/m' )
+    plot( 0, efield[i],xrange='-8.00E5 to 2.10E7 m', yrange='-1.10E-4 to 1.10E-4 V/m' )
     # Red is the left point
     # Green the right point
-    plot( 1, parts[i,[0]], zeros, color=Color.RED, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
-    plot( 2, parts[i,[1]], zeros, color=Color.GREEN, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    red=bundle(partsx[i,[0]],partsy[i,[0]])
+    green=bundle(partsx[i,[1]],partsy[i,[1]])
+    plot( 1,  red, zeros, color=redColor, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    plot( 2,  green, zeros, color=greenColor, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    
     img= writeToBufferedImage()
     enc.encodeImage(img)
     
-for i in xrange(240):
-     enc.encodeImage(img)
+for i in xrange(npause):
+    monitor.taskProgress = monitor.taskProgress + 1
+    monitor.progressMessage= '# pause '+ telapsed  +'s'
+    enc.encodeImage(img)
      
 enc.finish()
 monitor.finished()
