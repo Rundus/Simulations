@@ -1,3 +1,4 @@
+from org.das2.datum import DatumRangeUtil
 from org.das2.util import ColorUtil
 from java.lang import System
 import sys
@@ -5,62 +6,104 @@ from java.io import File
 
 ff= 'https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf'
 
-frame= getParam('frame','lab','frame of reference', ['lab','wave'] )
-efield= getDataSet(ff+'?Phi_lf&X=simTime')
-if ( frame=='lab' ):
-    efield= getDataSet(ff+'?Phi_lf&X=simTime')
-    partsx=  getDataSet(ff+'?elec_lf_x')
-    partsy=  getDataSet(ff+'?elec_lf_y')
-else:
-    efield= getDataSet(ff+'?Phi_wf&X=simTime')
-    partsx=  getDataSet(ff+'?elec_wf_x')
-    partsy=  getDataSet(ff+'?elec_wf_y')
-    
+hideAxes= getParam('hideAxes',False,'hide the axes', [True,False] )
+
+phi_lf= getDataSet(ff+'?Phi_lf&X=simTime&Y=simAlt')
+efield_lf= getDataSet(ff+'?EField_lf&X=simTime&Y=simAlt')
+partsx_lf=  getDataSet(ff+'?elec_lf_x')
+partsy_lf=  getDataSet(ff+'?elec_lf_y')
+phi_wf= getDataSet(ff+'?Phi_wf&X=simTime&Y=simAlt')
+efield_wf= getDataSet(ff+'?EField_wf&X=simTime&Y=simAlt')
+partsx_wf=  getDataSet(ff+'?elec_wf_x')
+partsy_wf=  getDataSet(ff+'?elec_wf_y')
+
+partsy_lf= dataset( partsy_lf, resetUnits='eV' )
+partsy_wf= dataset( partsy_wf, resetUnits='eV' )
 
 addToSearchPath(sys.path,'https://repo1.maven.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.jar',monitor.getSubtaskMonitor('jar1'))
 addToSearchPath(sys.path,'https://repo1.maven.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.jar',monitor.getSubtaskMonitor('jar2'))
 from org.jcodec.api.awt import AWTSequenceEncoder
 outf= getParam( 'outf', File('/tmp/apmovie.mp4'), 'Output File' )
-enc = AWTSequenceEncoder.createSequenceEncoder(outf,24)
+enc = AWTSequenceEncoder.createSequenceEncoder(outf,12)
 
 npause=240
 greenColor= ColorUtil.FOREST_GREEN
 redColor= ColorUtil.RED
+blueColor= 0x1F77B4
 
-reset()
-setLayoutOverplot(3)
-setCanvasSize(730,650)
+xr= DatumRangeUtil.parseDatumRange('0E5 to 2.0E7')
+yr= DatumRangeUtil.parseDatumRange('-1.5E-5 to 1.5E-5')
+symbolSize=10
 
-#dom.plots[0].visible=False
-#dom.plots[0].xaxis.visible=False
-#dom.plots[0].yaxis.visible=False
+load( PWD + 'layout.vap' )
+#reset()
+#setLayoutOverplot(6)
+#setCanvasSize(730,650)
 
-monitor.taskSize=len(efield)+npause
+if hideAxes:
+    dom.plots[0].visible=False
+    dom.plots[0].xaxis.visible=False
+    dom.plots[0].yaxis.visible=False
+
+monitor.taskSize=len(efield_lf)+npause
 monitor.started()
 
 t0= System.currentTimeMillis()
 
-zeros= dataset(['0 V/m'])
-for i in xrange(len(efield)):
+for i in xrange(len(efield_lf)):
     monitor.taskProgress = monitor.taskProgress + 1
     telapsed= '%.1f' % ( ( System.currentTimeMillis()-t0 )/ 1000. )
     monitor.progressMessage= '#'+str(i)+' '+ telapsed +'s'
     if monitor.cancelled: stop
-    plot( 0, efield[i],xrange='-8.00E5 to 2.10E7 m', yrange='-1.10E-4 to 1.10E-4 V/m' )
+    
+    plot( 1, phi_lf[i],xrange=xr, yrange=yr, title='Lab Frame', color=redColor, lineThick=2 )
+    plot( 0, efield_lf[i], color=blueColor, lineThick=2 )
     # Red is the left point
     # Green the right point
-    red=bundle(partsx[i,[0]],partsy[i,[0]])
-    green=bundle(partsx[i,[1]],partsy[i,[1]])
-    plot( 1,  red, zeros, color=redColor, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
-    plot( 2,  green, zeros, color=greenColor, symbolSize=15, yrange=dom.plots[0].yaxis.range, reset=False )
+    red=bundle(partsx_lf[i,[0]],partsy_lf[i,[0]])
+    green=bundle(partsx_lf[i,[1]],partsy_lf[i,[1]])
+    plot( 2,  red, color=redColor, symbolSize=symbolSize, reset=False )
+    plot( 3,  green, color=greenColor, symbolSize=symbolSize, reset=False )
     
+    xphi= xtags(phi_lf[i])
+    rm= imax( phi_lf[i])
+    maxx= bundle(xtags(phi_lf[i,[rm]]),phi_lf[i,[rm]])
+    plot( 4, maxx, color=redColor, symbolSize=symbolSize )
+    annotation(0,text='&Phi;!dmax!n',xrange=maxx[0,[0,0]], yrange=maxx[0,[1,1]],anchorType='DATA',background=None, 
+               anchorPosition='SW', fontSize='.8em', textColor=redColor, anchorOffset='0em,-0.50em', plotId=dom.plots[0].id )
+    enull=bundle(xtags(efield_lf[i,[rm]]),dataset([0]))
+    plot( 5, enull, color=blueColor, symbolSize=symbolSize )
+    annotation(1,text='E!d||!n',xrange=maxx[0,[0,0]], yrange=[0,0],anchorType='DATA',background=None, 
+               anchorPosition='SW', fontSize='.8em', textColor=blueColor, anchorOffset='0em,-0.50em', plotId=dom.plots[0].id )
+    
+    plot( 7, phi_wf[i],xrange=xr, yrange=yr, title='Wave Frame', color=redColor, lineThick=2 )
+    plot( 6, efield_wf[i], color=blueColor, lineThick=2 )
+    # Red is the left point
+    # Green the right point
+    red=bundle(partsx_wf[i,[0]],partsy_wf[i,[0]])
+    green=bundle(partsx_wf[i,[1]],partsy_wf[i,[1]])
+    plot( 8,  red, color=redColor, symbolSize=symbolSize, reset=False )
+    plot( 9,  green, color=greenColor, symbolSize=symbolSize, reset=False )
+    
+    xphi= xtags(phi_wf[i])
+    rm= imax( phi_wf[i])
+    maxx= bundle(xtags(phi_wf[i,[rm]]),phi_wf[i,[rm]])
+    plot( 10, maxx, color=redColor, symbolSize=symbolSize )
+    annotation(2,text='&Phi;!dmax!n',xrange=maxx[0,[0,0]], yrange=maxx[0,[1,1]],anchorType='DATA',background=None, 
+               anchorPosition='SW', fontSize='.8em', textColor=redColor, anchorOffset='0em,-0.50em', plotId=dom.plots[1].id  )
+    enull=bundle(xtags(efield_wf[i,[rm]]),dataset([0]))
+    plot( 11, enull, color=0x1F77B4, symbolSize=symbolSize )
+    annotation(3,text='E!d||!n',xrange=maxx[0,[0,0]], yrange=[0,0],anchorType='DATA',background=None, 
+               anchorPosition='SW', fontSize='.8em', textColor=blueColor, anchorOffset='0em,-0.50em', plotId=dom.plots[1].id  )
+
     img= writeToBufferedImage()
     enc.encodeImage(img)
     
-for i in xrange(npause):
-    monitor.taskProgress = monitor.taskProgress + 1
-    monitor.progressMessage= '# pause '+ telapsed  +'s'
-    enc.encodeImage(img)
+#for i in xrange(npause):
+#    monitor.taskProgress = monitor.taskProgress + 1
+#    monitor.progressMessage= '# pause '+ str(i) + '/' + str(npause) 
+#    enc.encodeImage(img)
      
 enc.finish()
 monitor.finished()
+setStatus('All done, see '+str(outf))
