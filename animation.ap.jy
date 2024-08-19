@@ -6,13 +6,13 @@ from java.io import File
 ff= 'https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf'
 
 frame= getParam('frame','lab','frame of reference', ['lab','wave'] )
-
+efield= getDataSet(ff+'?Phi_lf&X=simTime')
 if ( frame=='lab' ):
-    efield= getDataSet(ff+'?EField_lf')
+    efield= getDataSet(ff+'?Phi_lf&X=simTime')
     partsx=  getDataSet(ff+'?elec_lf_x')
     partsy=  getDataSet(ff+'?elec_lf_y')
 else:
-    efield= getDataSet(ff+'?EField_wf')
+    efield= getDataSet(ff+'?Phi_wf&X=simTime')
     partsx=  getDataSet(ff+'?elec_wf_x')
     partsy=  getDataSet(ff+'?elec_wf_y')
     
@@ -31,9 +31,9 @@ reset()
 setLayoutOverplot(3)
 setCanvasSize(730,650)
 
-dom.plots[0].visible=False
-dom.plots[0].xaxis.visible=False
-dom.plots[0].yaxis.visible=False
+#dom.plots[0].visible=False
+#dom.plots[0].xaxis.visible=False
+#dom.plots[0].yaxis.visible=False
 
 monitor.taskSize=len(efield)+npause
 monitor.started()
