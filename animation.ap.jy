@@ -7,6 +7,13 @@ from java.io import File
 ff= 'https://github.com/Rundus/Simulations/blob/main/AlfvenResonanceVisualization.cdf'
 
 hideAxes= getParam('hideAxes',True,'hide the axes', [True,False] )
+outputFormat= getParam('outputFormat', 'png', 'output format', ['png','mp4'] )
+# ffmpeg -i %06d.png  -vcodec libx264 -crf 22 -pix_fmt yuv420p video.mp4
+
+if outputFormat=='mp4':
+    outf= getParam( 'outf', File('/tmp/apmovie.mp4'), 'Output File' )
+else:
+    outd= getParam( 'outd', File('/tmp/apmovie/'), 'Output Directory' )
 
 phi_lf= getDataSet(ff+'?Phi_lf&X=simTime&Y=simAlt')
 efield_lf= getDataSet(ff+'?EField_lf&X=simTime&Y=simAlt')
@@ -17,21 +24,20 @@ efield_wf= getDataSet(ff+'?EField_wf&X=simTime&Y=simAlt')
 partsx_wf=  getDataSet(ff+'?elec_wf_x')
 partsy_wf=  getDataSet(ff+'?elec_wf_y')
 
-partsy_lf= dataset( partsy_lf, resetUnits='eV' )
-partsy_wf= dataset( partsy_wf, resetUnits='eV' )
-
-addToSearchPath(sys.path,'https://space.physics.uiowa.edu/~jbf/autoplot/lib/jcodec/jcodec-javase-0.2.5.jar',monitor.getSubtaskMonitor('jar1'))
-addToSearchPath(sys.path,'https://space.physics.uiowa.edu/~jbf/autoplot/lib/jcodec/jcodec-0.2.5.jar',monitor.getSubtaskMonitor('jar2'))
-from org.jcodec.api.awt import AWTSequenceEncoder
-outf= getParam( 'outf', File('/tmp/apmovie.mp4'), 'Output File' )
-enc = AWTSequenceEncoder.createSequenceEncoder(outf,12)
-
+if outputFormat=='mp4':
+    addToSearchPath(sys.path,'https://space.physics.uiowa.edu/~jbf/autoplot/lib/jcodec/jcodec-javase-0.2.5.jar',monitor.getSubtaskMonitor('jar1'))
+    addToSearchPath(sys.path,'https://space.physics.uiowa.edu/~jbf/autoplot/lib/jcodec/jcodec-0.2.5.jar',monitor.getSubtaskMonitor('jar2'))
+    from org.jcodec.api.awt import AWTSequenceEncoder
+    enc = AWTSequenceEncoder.createSequenceEncoder(outf,12)
+    
 npause=0
 greenColor= ColorUtil.FOREST_GREEN
 redColor= ColorUtil.RED
+orangeColor= Color(255,102,0)
 blueColor= 0x1F77B4
+darkBlueColor= Color(255,51,255)
 
-xr= DatumRangeUtil.parseDatumRange('0E5 to 2.0E7')
+xr= DatumRangeUtil.parseDatumRange('1E5 to 5.0E7')
 yr= DatumRangeUtil.parseDatumRange('-1.7E-5 to 1.7E-5')
 symbolSize=10
 fs='1.4em'
@@ -52,60 +58,81 @@ monitor.started()
 
 t0= System.currentTimeMillis()
 
-for i in xrange(len(efield_lf)):
-    monitor.taskProgress = monitor.taskProgress + 1
+for i in xrange(0,len(efield_lf),1):
+    monitor.taskProgress = i
     telapsed= '%.1f' % ( ( System.currentTimeMillis()-t0 )/ 1000. )
     monitor.progressMessage= '#'+str(i)+' '+ telapsed +'s'
     if monitor.cancelled: stop
     
-    plot( 1, phi_lf[i],xrange=xr, yrange=yr, title='Lab Frame', color=redColor, lineThick=2.0 )
+    plot( 1, phi_lf[i],xrange=xr, yrange=yr, title='', color=redColor, lineThick=2.0 )
     plot( 0, efield_lf[i], color=blueColor, lineThick=2.0 )
     # Red is the left point
     # Green the right point
     red=bundle(partsx_lf[i,[0]],partsy_lf[i,[0]])
     green=bundle(partsx_lf[i,[1]],partsy_lf[i,[1]])
-    plot( 2,  red, color=redColor, symbolSize=symbolSize, reset=False )
+    plot( 2,  red, color=orangeColor, symbolSize=symbolSize, reset=False )
     plot( 3,  green, color=greenColor, symbolSize=symbolSize, reset=False )
     
     xphi= xtags(phi_lf[i])
     rm= imax( phi_lf[i])
     maxx= bundle(xtags(phi_lf[i,[rm]]),phi_lf[i,[rm]])
-    plot( 4, maxx, color=redColor, symbolSize=symbolSize )
-    annotation(0,text='&Phi;!Bmax!n',xrange=maxx[0,[0,0]], yrange=maxx[0,[1,1]],anchorType='DATA',background=None, 
+
+    print 'maxx[0,0]=',maxx[0,0],2.01e5,maxx[0,0]<=2.01e5
+    p,pe=plot( 4, maxx, color=redColor, symbolSize=symbolSize )
+    if maxx[0,0]<=2.01e5:
+        phiLabel= ''
+        pe.active=False
+    else:
+        phiLabel= '&Phi;!Bmax!n'
+    annotation(0,text=phiLabel,xrange=maxx[0,[0,0]], yrange=maxx[0,[1,1]],anchorType='DATA',background=None, 
                anchorPosition='SW', fontSize=fs, textColor=redColor, anchorOffset='0em,-1.20em', plotId=dom.plots[0].id )
     enull=bundle(xtags(efield_lf[i,[rm]]),dataset([0]))
-    plot( 5, enull, color=blueColor, symbolSize=symbolSize )
+    p,pe=plot( 5, enull, color=blueColor, symbolSize=symbolSize )
+    if enull[0,0]<=2.01e5:
+        pe.active=False
     annotation(1,text='E!B||!n',xrange=maxx[0,[0,0]], yrange=[0,0],anchorType='DATA',background=None, 
                anchorPosition='NE', fontSize=fs, textColor=blueColor, anchorOffset='0em,-0.50em', plotId=dom.plots[0].id )
     
-    plot( 7, phi_wf[i],xrange=xr, yrange=yr, title='Wave Frame', color=redColor, lineThick=2.0 )
+    plot( 7, phi_wf[i],xrange=xr, yrange=yr, title='', color=redColor, lineThick=2.0 )
     plot( 6, efield_wf[i], color=blueColor, lineThick=2.0 )
     # Red is the left point
     # Green the right point
     red=bundle(partsx_wf[i,[0]],partsy_wf[i,[0]])
     green=bundle(partsx_wf[i,[1]],partsy_wf[i,[1]])
-    plot( 8,  red, color=redColor, symbolSize=symbolSize, reset=False )
+    plot( 8,  red, color=orangeColor, symbolSize=symbolSize, reset=False )
     plot( 9,  green, color=greenColor, symbolSize=symbolSize, reset=False )
     
     xphi= xtags(phi_wf[i])
     rm= imax( phi_wf[i])
     maxx= bundle(xtags(phi_wf[i,[rm]]),phi_wf[i,[rm]])
     plot( 10, maxx, color=redColor, symbolSize=symbolSize )
-    annotation(2,text='&Phi;!Bmax!n',xrange=maxx[0,[0,0]], yrange=maxx[0,[1,1]],anchorType='DATA',background=None, 
+    
+    if maxx[0,0]==0.:
+        phiLabel= ''
+    else:
+        phiLabel= '&Phi;!Bmax!n'
+    annotation(2,text=phiLabel,xrange=maxx[0,[0,0]], yrange=maxx[0,[1,1]],anchorType='DATA',background=None, 
                anchorPosition='SW', fontSize=fs, textColor=redColor, anchorOffset='0em,-1.20em', plotId=dom.plots[1].id  )
     enull=bundle(xtags(efield_wf[i,[rm]]),dataset([0]))
     plot( 11, enull, color=0x1F77B4, symbolSize=symbolSize )
     annotation(3,text='E!B||!n',xrange=maxx[0,[0,0]], yrange=[0,0],anchorType='DATA',background=None, 
                anchorPosition='NE', fontSize=fs, textColor=blueColor, anchorOffset='0em,-0.50em', plotId=dom.plots[1].id  )
-
-    img= writeToBufferedImage()
-    enc.encodeImage(img)
     
-#for i in xrange(npause):
-#    monitor.taskProgress = monitor.taskProgress + 1
-#    monitor.progressMessage= '# pause '+ str(i) + '/' + str(npause) 
-#    enc.encodeImage(img)
+    xxx=bundle(partsx_wf[i,[2]],partsy_wf[i,[2]])
+    plot( 12, xxx, color=darkBlueColor, symbolSize=symbolSize )
+    xxx=bundle(partsx_lf[i,[2]],partsy_lf[i,[2]])
+    plot( 13, xxx, color=darkBlueColor, symbolSize=symbolSize )
+    
+    img= writeToBufferedImage()
+    if outputFormat=='mp4':
+        enc.encodeImage(img)
+    else:
+        writeToPng( img,str(outd)+'/%06d.png'%i,None)
+        setStatus('All done, see pngs in '+str(outd))
      
-enc.finish()
+if outputFormat=='mp4':
+    enc.finish()
+    setStatus('All done, see '+str(outf))
+    
 monitor.finished()
-setStatus('All done, see '+str(outf))
+
